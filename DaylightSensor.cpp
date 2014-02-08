@@ -1,4 +1,4 @@
-#define DEBUG
+//#define DEBUG
 #include "DebugUtils.h"
 
 #include "Arduino.h"
@@ -29,19 +29,22 @@ void DaylightSensor::Init(int prPin, boolean isDaytime, long delayTime)
   byte savedDayLevel = EEPROM.read(0);
   byte savedNightLevel = EEPROM.read(1);
   
-  if (savedDayLevel != 255)
-    _dayLevel = savedDayLevel;
+  if (savedDayLevel > savedNightLevel)
+  {
+	  if (savedDayLevel != 255)
+		_dayLevel = savedDayLevel;
     
-  if (savedNightLevel != 255)
-    _nightLevel = savedNightLevel;
-    
-  DEBUG_PRINT("DaylightSensor Init: day level=" + String(_dayLevel) + ", night level=" + String(_nightLevel) + ", delay=" + String(_delayTime));
+	  if (savedNightLevel != 255)
+		_nightLevel = savedNightLevel;
+  } 
+
+  DEBUG_PRINTLN("DaylightSensor Init: day level=" + String(_dayLevel) + ", night level=" + String(_nightLevel) + ", delay=" + String(_delayTime));
 }
 
 void DaylightSensor::Reset(boolean isDaytime)
 {
   _isDaytime = isDaytime;
-  DEBUG_PRINT("After Reset: isDaytime=" + String(_isDaytime));
+  DEBUG_PRINTLN("After Reset: isDaytime=" + String(_isDaytime));
   _changeStart = 0;
 }
 
@@ -55,7 +58,7 @@ void DaylightSensor::SetDayLevel()
   // Save current reading to EEPROM
   _dayLevel = _currentLevel();
   EEPROM.write(0, _dayLevel);
-  DEBUG_PRINT("Saved new day level: " + String(_dayLevel));
+  DEBUG_PRINTLN("Saved new day level: " + String(_dayLevel));
   if (_onSetLevelFunc)
 	  _onSetLevelFunc();
 }
@@ -65,68 +68,57 @@ void DaylightSensor::SetNightLevel()
   // Save current reading to EEPROM
   _nightLevel = _currentLevel();
   EEPROM.write(1, _nightLevel);
-  DEBUG_PRINT("Saved new night level: " + String(_nightLevel));
+  DEBUG_PRINTLN("Saved new night level: " + String(_nightLevel));
   if (_onSetLevelFunc)
 	  _onSetLevelFunc();
 }
 
-void DaylightSensor::Update()
+boolean DaylightSensor::Update()
 {
-  if (!_checkSampleTime())
-    return;
+	boolean hasUpdate = true;
+	byte currentLevel = _currentLevel();
 
-  byte currentLevel = _currentLevel();
-  
-  if ((_isDaytime && (currentLevel <= _nightLevel)) || (!_isDaytime && (currentLevel >= _dayLevel))) 
-  {
-    if (_changeStart == 0) // && ((_isDaytime && (_lastLevel > _nightLevel)) || (!_isDaytime && (_lastLevel < _dayLevel))))
-    {
-      // Changing since last check
-      if (_onChangingFunc)
-        _onChangingFunc();
+	if ((_isDaytime && (currentLevel <= _nightLevel)) || (!_isDaytime && (currentLevel >= _dayLevel))) 
+	{
+		if (_changeStart == 0) // && ((_isDaytime && (_lastLevel > _nightLevel)) || (!_isDaytime && (_lastLevel < _dayLevel))))
+		{
+			DEBUG_PRINTLN("Daylight state seems to be different");
+			// Changing since last check
+			if (_onChangingFunc)
+			_onChangingFunc();
     
-      _changeStart = millis();
-    }
-    else if (millis() > (_changeStart + _delayTime))
-    {
-      // Change accepted
-      _isDaytime = !_isDaytime;
-      if (_onChangeFunc)
-        _onChangeFunc(_isDaytime);
-      _changeStart = 0;
-    }
-  }
-  else if (_changeStart != 0 && ((_isDaytime && _lastLevel <= _nightLevel) || (!_isDaytime && _lastLevel >= _dayLevel)))
-  {
-    // Change reverted
-    if (_onCancelledFunc)
-      _onCancelledFunc();
-    _changeStart = 0;
-  }  
+			_changeStart = millis();
+		}
+		else if (millis() > (_changeStart + _delayTime))
+		{
+			DEBUG_PRINTLN("Daylight change detected");
+			// Change accepted
+			_isDaytime = !_isDaytime;
+			if (_onChangeFunc)
+			_onChangeFunc(_isDaytime);
+			_changeStart = 0;
+		}
+		// else change still pending
+	}
+	else if (_changeStart != 0 && ((_isDaytime && _lastLevel <= _nightLevel) || (!_isDaytime && _lastLevel >= _dayLevel)))
+	{
+		DEBUG_PRINTLN("Daylight change never mind...");
+		// Change reverted
+		if (_onCancelledFunc)
+			_onCancelledFunc();
+		_changeStart = 0;
+	}
+	else
+		hasUpdate = false;
   
   _lastLevel = currentLevel;
+
+  return hasUpdate;
 }
 
 byte DaylightSensor::_currentLevel() 
 {
   return (byte)map(analogRead(_prPin), 0, 1023, 0, 254);
-}
-
-boolean DaylightSensor::_checkSampleTime()
-{
-  static long lastMillis = millis();
-  long currentMillis = millis();
-
-  // Handle overflow
-  if (currentMillis < lastMillis)
-    lastMillis = currentMillis;
-    
-  if (currentMillis < (lastMillis + SAMPLE_TIME))
-    return false;
-    
-  lastMillis = currentMillis;
-
-  return true;
 }
 
 void DaylightSensor::OnChanging(void (*onChanging)())

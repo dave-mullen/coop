@@ -1,15 +1,17 @@
-//#define DEBUG
+#define DEBUG
 #include "DebugUtils.h"
 
 #include "Arduino.h"
 #include "Flasher.h"
 
 const long FLASHER_PULSE_LENGTH = 1000;
-const long FLASHER_PULSE_DELAY = 5000;
+const long FLASHER_PULSE_DELAY = 0;
 const long FLASHER_BLINK_LENGTH = 500;
 const long FLASHER_BLINK_DELAY = 500;
 const long FLASHER_BLINKFAST_LENGTH = 200;
 const long FLASHER_BLINKFAST_DELAY = 200;
+
+void (*_onPulseCompleteFunc)();
 
 Flasher::Flasher() 
 {
@@ -50,8 +52,11 @@ void Flasher::SetFlashSequence(enum FlashType type, int time, enum FlashType aft
 	_flashStopTime = millis() + time;
 }
 
-void Flasher::Update() 
+boolean Flasher::Update() 
 {
+	if (_type == None && _lastValue == 0)
+		return false;
+
 	long currentMillis = millis();
 	//_timeAdjust = 0;
 
@@ -100,17 +105,29 @@ void Flasher::Update()
 		_writeToPin(0);
 		break;
 	}
+
+	return true;
 }
 
 void Flasher::_writeToPin(int value)
 {
+	bool pulseJustCompleted = value == 0 && _lastValue != 0 && _type == Pulse;
+
 	if (value != _lastValue)
 		analogWrite(_ledPin, value);
 	_lastValue = value;
+
+	if (pulseJustCompleted && _onPulseCompleteFunc)
+		_onPulseCompleteFunc();
 }
 
-boolean Flasher::IsIdle()
+boolean Flasher::IsType(enum FlashType type)
 {
-	return (_type == None || (_type == Pulse && _lastValue == 0));
+	return _type == type;
+}
+
+void Flasher::OnPulseComplete(void (*onPulseComplete)())
+{
+  _onPulseCompleteFunc = onPulseComplete;
 }
 

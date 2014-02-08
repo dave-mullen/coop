@@ -8,7 +8,7 @@ class Button
   public:
     Button();
     void Init(int buttonPin);
-    void Update();
+    boolean Update();
     
     // Events
     void OnPress(void (*onPress)());

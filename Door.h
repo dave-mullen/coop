@@ -8,7 +8,7 @@ class Door
   public:
 	Door();
     void Init(int doorOpenedSwitchPin, int doorClosedSwitchPin, int motorStbyPin, int motorPwmPin, int motorIn1Pin, int motorIn2Pin, byte doorSpeed, int maxRunTime);
-    void Update();
+    boolean Update();
     void Open();
     void Close();
     void Toggle();

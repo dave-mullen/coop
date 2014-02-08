@@ -4,8 +4,8 @@
 #include "Arduino.h"
 #include "Door.h"
 
-const int DOOR_OPENED_STATE = HIGH;
-const int DOOR_CLOSED_STATE = LOW; // Note: Switch mistakenly wired as NC so will go low when closed
+const int DOOR_OPENED_STATE = LOW; // Note: Switch mistakenly wired as NC so will go low when open
+const int DOOR_CLOSED_STATE = HIGH; 
 
 void (*_onMaxRunFunc)();
 void (*_onOpenedFunc)();
@@ -44,9 +44,9 @@ void Door::Init(int doorOpenedSwitchPin, int doorClosedSwitchPin, int motorStbyP
     _doorState = Closed;
 }
 
-void Door::Update()
+boolean Door::Update()
 {
-	//DEBUG_PRINT(String(digitalRead(_doorOpenedSwitchPin)) + " " + String(digitalRead(_doorClosedSwitchPin)));
+	boolean hasUpdate = true;
 
   if (_doorState == Opening || _doorState == Closing) 
   {
@@ -55,7 +55,7 @@ void Door::Update()
 
     if (_doorState == Opening && digitalRead(_doorOpenedSwitchPin) == DOOR_OPENED_STATE) 
     {
-      DEBUG_PRINT("Door detected opened.  Stopping...");
+      DEBUG_PRINTLN("Door detected opened.  Stopping...");
       
       Stop();
       
@@ -64,7 +64,7 @@ void Door::Update()
     }
     else if (_doorState == Closing && digitalRead(_doorClosedSwitchPin) == DOOR_CLOSED_STATE) 
     {
-      DEBUG_PRINT("Door detected closed.  Stopping...");
+      DEBUG_PRINTLN("Door detected closed.  Stopping...");
       
       Stop();
       
@@ -75,7 +75,7 @@ void Door::Update()
     {
       if (millis() > (_doorRunStart + _maxRunTime)) 
       {
-        DEBUG_PRINT("Door timed out while " + String(_doorState) + ".  Stopping...");
+        DEBUG_PRINTLN("Door timed out while " + String(_doorState) + ".  Stopping...");
 
         // door has hit max running time
         Stop();
@@ -86,9 +86,14 @@ void Door::Update()
     }
   }
   else
+  {
     _doorRunStart = 0;
+	hasUpdate = false;
+  }
 
   _lastDoorState = _doorState;
+
+  return hasUpdate;
 }
 
 void Door::Open() 
@@ -135,7 +140,7 @@ boolean Door::IsClosed()
 
 void Door::_openClose(boolean openIt) 
 {
-  DEBUG_PRINT("Door " + String(openIt ? "opening... " : "closing..."));
+  DEBUG_PRINTLN("Door " + String(openIt ? "opening... " : "closing..."));
 
   _doorState = openIt ? Opening : Closing;
 

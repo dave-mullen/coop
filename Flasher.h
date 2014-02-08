@@ -26,10 +26,12 @@ class Flasher
  public:
 	Flasher();
 	void Init(int ledPin);
-	void Update();
+	boolean Update();
 	void SetFlash(enum FlashType type);
 	void SetFlashSequence(enum FlashType type, int time, enum FlashType afterType);
-	boolean IsIdle();
+	boolean IsType(enum FlashType type);
+    // Events
+    void OnPulseComplete(void (*onPulseComplete)());
 };
 
 #endif

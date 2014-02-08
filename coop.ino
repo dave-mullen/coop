@@ -15,15 +15,6 @@
 #include "Flasher.h"
 #include "LowPower.h"
 
-//// Macros for sleep mode
-//#ifndef cbi
-//#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-//#endif
-//#ifndef sbi
-//#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-//#endif
-
-
 // Pin number constants
 const int PIN_DOOR_OPENED_SWITCH = 8; // Door open micro-switch
 const int PIN_DOOR_CLOSED_SWITCH = 9; // Door closed micro-switch
@@ -38,18 +29,14 @@ const int PIN_FLASHER = 11; // Alert LED (PWM)
 // Configuration constants
 const int CONFIG_NIGHT_LEVEL = 15; // Light sensor level at which we consider it nighttime
 const long CONFIG_DAYLIGHT_CHANGE_DELAY = 300000; // 5 min Delay (ms) to recognize that it is actually nighttime
-//const int CONFIG_DAY_LEVEL = 50; // Light sensor level at which we consider it daytime
-//const long CONFIG_DAYLIGHT_CHANGE_DELAY = 10000; //15 * 60 * 1000; // Delay (ms) to recognize that it is actually daytime
 const byte CONFIG_DOOR_SPEED = 255; // Speed at which the door motor should run
-const int CONFIG_DOOR_MAX_RUN = 30000; // Milliseconds the door should be allowed to run for
-const long SLEEP_MODE_TIME = 20000; // Milliseconds of inactivity before starting sleep mode
+const int CONFIG_DOOR_MAX_RUN = 27000; // Milliseconds the door should be allowed to run for
+const long SLEEP_MODE_TIME = 120000; // Milliseconds of inactivity before starting sleep mode
+
 Door door;
 Button toggleButton;
 DaylightSensor daylightSensor;
 Flasher flasher;
-
-long lastEventMillis = 1;
-boolean sleepModeSafe = false;
 
 // the setup routine runs once when you press reset:
 void setup() {
@@ -63,8 +50,6 @@ void setup() {
 	door.OnClosed(DoorClosed);
 	door.OnDoorStart(DoorStart);
 
-	//isDaytime = door.IsOpened();
-  
 	toggleButton.Init(PIN_DOOR_TOGGLE_BUTTON);
 	toggleButton.OnPress(ToggleButtonPress);
 	toggleButton.OnHold(ToggleButtonHold);
@@ -76,35 +61,41 @@ void setup() {
 	daylightSensor.OnSetLevel(DaylightSensorSetLevel);
   
 	flasher.Init(PIN_FLASHER);
-
-	//cbi(SMCR,SE );      // sleep enable, power down mode
-	//cbi(SMCR,SM0 );     // power down mode
-	//sbi(SMCR,SM1 );     // power down mode
-	//cbi(SMCR,SM2 );     // power down mode
-
-	//SetupSleepMode(5);
-
+	flasher.OnPulseComplete(FlasherPulseComplete);
 }
 
 // the loop routine runs over and over again forever:
-void loop() {
-	door.Update();
-	toggleButton.Update();
-	daylightSensor.Update();
-	flasher.Update();
-
+void loop() 
+{
+	static long lastUpdateMillis = millis();
 	long currentMillis = millis();
-	if (currentMillis < lastEventMillis)
-		lastEventMillis = currentMillis;
 
-	// No event has run for 20 seconds
-	if ((currentMillis - lastEventMillis) > SLEEP_MODE_TIME && flasher.IsIdle())
+	// Run all event processors.  They will return true if something is happening
+	boolean hadUpdate = false;
+	hadUpdate |= door.Update();
+	hadUpdate |= toggleButton.Update();
+	hadUpdate |= daylightSensor.Update();
+	hadUpdate |= flasher.Update();
+
+	// Stamp time of last activity or handle overflow
+	if (hadUpdate || currentMillis < lastUpdateMillis)
+		lastUpdateMillis = currentMillis;
+
+	// If no activity see if it has been idle for SLEEP_MODE_TIME ms
+	if (!hadUpdate && (currentMillis - lastUpdateMillis) > SLEEP_MODE_TIME)
 	{
-		DEBUG_PRINT("Going to sleep " + String(currentMillis) + ", " + String(lastEventMillis));
-		//delay(80);
-		//GoToSleep();
-		//LowPower.powerDown(SLEEP_120MS, ADC_OFF, BOD_OFF); 
-		LowPower.idle(SLEEP_500MS, ADC_OFF, TIMER2_OFF, TIMER1_OFF, TIMER0_ON, SPI_OFF, USART0_OFF, TWI_OFF);
+		if (daylightSensor.IsDaytime())
+		{
+			// If daytime we will sleep for a very short time to save battery but still be ready to process events
+			LowPower.powerDown(SLEEP_120MS, ADC_OFF, BOD_OFF); 
+			DEBUG_PRINT("z");
+			delay(3); 
+		}
+		else
+		{
+			// At nighttime set pulse flasher which will trigger longer sleep after each pulse
+			flasher.SetFlash(Pulse);
+		}
 	}
 }
 
@@ -113,59 +104,46 @@ void loop() {
 
 void DoorMaxRun() 
 {
-	EventTick();
-
 	// TODO - LED warning
-	DEBUG_PRINT("DoorMaxRun event");
-	DEBUG_PRINT("IsOpen = " + String(door.IsOpened()) + ", IsClosed = " + String(door.IsClosed()));
+	DEBUG_PRINTLN("DoorMaxRun event.  IsOpen = " + String(door.IsOpened()) + ", IsClosed = " + String(door.IsClosed()));
 	daylightSensor.Reset(!door.IsClosed());
 	flasher.SetFlash(BlinkFast);
 }
 
 void DoorOpened() 
 {
-	EventTick();
-
 	// TODO - turn LED off
-	DEBUG_PRINT("DoorOpened event");
+	DEBUG_PRINTLN("DoorOpened event");
 	daylightSensor.Reset(true);
 	flasher.SetFlash(None);
 }
 
 void DoorClosed() 
 {
-	EventTick();
-
 	// TODO - if nighttime should set appropriate LED
-	DEBUG_PRINT("DoorClosed event");
+	DEBUG_PRINTLN("DoorClosed event");
 	daylightSensor.Reset(false);
-	flasher.SetFlash(Pulse);
+	flasher.SetFlash(None);
 }
 
 void DoorStart()
 {
-	EventTick();
-
 	// TODO - flash LED
-	DEBUG_PRINT("DoorStart event");
+	DEBUG_PRINTLN("DoorStart event");
 	flasher.SetFlash(Solid);
 }
 
 // Toggle button event handlers
 void ToggleButtonPress()
 {
-	EventTick();
-
 	boolean isOpened = door.IsOpened() || !door.IsClosed();
 	door.Toggle();
-	DEBUG_PRINT("ToggleButtonPress event");
+	DEBUG_PRINTLN("ToggleButtonPress event");
 }
 
 void ToggleButtonHold()
 {
-	EventTick();
-
-	DEBUG_PRINT("ToggleButtonHold event");
+	DEBUG_PRINTLN("ToggleButtonHold event");
 
 	// Save the current daylight level to EEPROM
 	if (door.IsOpened())
@@ -177,82 +155,41 @@ void ToggleButtonHold()
 // Daylight sensor events
 void DaylightSensorChanging()
 {
-	EventTick();
-
-	DEBUG_PRINT("DaylightSensorChanging event");
+	DEBUG_PRINTLN("DaylightSensorChanging event");
 
 	flasher.SetFlash(Blink);
 }
 
 void DaylightSensorCancelled()
 {
-	DEBUG_PRINT("DaylightSensorCancelled event");
+	DEBUG_PRINTLN("DaylightSensorCancelled event");
 
     flasher.SetFlash(Revert);
 }
 
 void DaylightSensorChange(boolean isDaylight)
 {
-	EventTick();
-
-	DEBUG_PRINT("DaylightSensorChange event");
+	DEBUG_PRINTLN("DaylightSensorChange event");
 
 	if (isDaylight)  
 		door.Open();
 	else
 		door.Close();
-    
-    flasher.SetFlash(daylightSensor.IsDaytime() ? None : Pulse);
 }
 
 void DaylightSensorSetLevel() 
 {
-	EventTick();
-
-	DEBUG_PRINT("DaylightSensorSetLevel event");
+	DEBUG_PRINTLN("DaylightSensorSetLevel event");
 	flasher.SetFlashSequence(BlinkFast, 2000, Revert);
 }
 
-void EventTick()
+/// FlasherPulseComplete - Thrown when the flasher completes a pulse.  Tells us it's ok to sleep for 8 seconds
+void FlasherPulseComplete()
 {
-	lastEventMillis = millis();
-}
+#ifdef DEBUG
+	delay(100); // Clear serial buffer
+#endif
 
-//void GoToSleep() {
-//	cbi(ADCSRA, ADEN);                    // switch Analog to Digitalconverter OFF
-//
-//	set_sleep_mode(SLEEP_MODE_PWR_DOWN); // sleep mode is set here
-//	sleep_enable();
-//
-//	sleep_mode();                        // System sleeps here
-//
-//    sleep_disable();                     // System continues execution here when watchdog timed out 
-//    sbi(ADCSRA, ADEN);                    // switch Analog to Digitalconverter ON
-//}
-//
-//// 0=16ms, 1=32ms,2=64ms,3=128ms,4=250ms,5=500ms,6=1 sec,7=2 sec, 8=4 sec, 9= 8sec
-//void SetupSleepMode(int ii) {
-//  byte bb;
-//  int ww;
-//  if (ii > 9 ) ii=9;
-//  bb=ii & 7;
-//  if (ii > 7) bb|= (1<<5);
-//  bb|= (1<<WDCE);
-//  ww=bb;
-//  Serial.println(ww);
-//
-//  MCUSR &= ~(1<<WDRF);
-//  // start timed sequence
-//  WDTCSR |= (1<<WDCE) | (1<<WDE);
-//  // set new watchdog timeout value
-//  WDTCSR = bb;
-//  WDTCSR |= _BV(WDIE);
-//}
-//
-////****************************************************************  
-//// Watchdog Interrupt Service / is executed when  watchdog timed out
-//ISR(WDT_vect) {
-//	/* nothing */
-//}
-//
-//
+	LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF); 
+	DEBUG_PRINT("ZZZ");
+}
