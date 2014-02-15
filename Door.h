@@ -7,7 +7,7 @@ class Door
 {
   public:
 	Door();
-    void Init(int doorOpenedSwitchPin, int doorClosedSwitchPin, int motorStbyPin, int motorPwmPin, int motorIn1Pin, int motorIn2Pin, byte doorSpeed, int maxRunTime);
+    void Init(int doorOpenedSwitchPin, int doorClosedSwitchPin, int motorStbyPin, int motorPwmPin, int motorIn1Pin, int motorIn2Pin, byte doorSpeed, int maxOpenTime, int maxCloseTime);
     boolean Update();
     void Open();
     void Close();
@@ -41,7 +41,8 @@ class Door
     int _motorIn1Pin;
     int _motorIn2Pin;
     byte _doorSpeed;
-    int _maxRunTime;
+    int _maxOpenTime;
+	int _maxCloseTime;
     
     void _openClose(boolean openIt);
 };

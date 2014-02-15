@@ -27,10 +27,10 @@ const int PIN_MOTOR_A_IN2 = 5; // Direction 2
 const int PIN_FLASHER = 11; // Alert LED (PWM)
 
 // Configuration constants
-const int CONFIG_NIGHT_LEVEL = 15; // Light sensor level at which we consider it nighttime
-const long CONFIG_DAYLIGHT_CHANGE_DELAY = 300000; // 5 min Delay (ms) to recognize that it is actually nighttime
+const long CONFIG_DAYLIGHT_CHANGE_DELAY = 300000; // 5 min Delay (ms) to recognize that it is actually a day/night change and not just temporary
 const byte CONFIG_DOOR_SPEED = 255; // Speed at which the door motor should run
-const int CONFIG_DOOR_MAX_RUN = 27000; // Milliseconds the door should be allowed to run for
+const int CONFIG_DOOR_MAX_OPEN_TIME = 30000; // Milliseconds the door should be allowed to take to open
+const int CONFIG_DOOR_MAX_CLOSE_TIME = 24000; // Milliseconds the door should be allowed to take to close
 const long SLEEP_MODE_TIME = 120000; // Milliseconds of inactivity before starting sleep mode
 
 Door door;
@@ -43,7 +43,7 @@ void setup() {
   // TODO - initialize pins
 	Serial.begin(9600);
 
-	door.Init(PIN_DOOR_OPENED_SWITCH, PIN_DOOR_CLOSED_SWITCH, PIN_MOTOR_STBY, PIN_MOTOR_A_PWM, PIN_MOTOR_A_IN1, PIN_MOTOR_A_IN2, CONFIG_DOOR_SPEED, CONFIG_DOOR_MAX_RUN);
+	door.Init(PIN_DOOR_OPENED_SWITCH, PIN_DOOR_CLOSED_SWITCH, PIN_MOTOR_STBY, PIN_MOTOR_A_PWM, PIN_MOTOR_A_IN1, PIN_MOTOR_A_IN2, CONFIG_DOOR_SPEED, CONFIG_DOOR_MAX_OPEN_TIME, CONFIG_DOOR_MAX_CLOSE_TIME);
  
 	door.OnMaxRun(DoorMaxRun);
 	door.OnOpened(DoorOpened);
@@ -104,7 +104,6 @@ void loop()
 
 void DoorMaxRun() 
 {
-	// TODO - LED warning
 	DEBUG_PRINTLN("DoorMaxRun event.  IsOpen = " + String(door.IsOpened()) + ", IsClosed = " + String(door.IsClosed()));
 	daylightSensor.Reset(!door.IsClosed());
 	flasher.SetFlash(BlinkFast);
@@ -112,7 +111,6 @@ void DoorMaxRun()
 
 void DoorOpened() 
 {
-	// TODO - turn LED off
 	DEBUG_PRINTLN("DoorOpened event");
 	daylightSensor.Reset(true);
 	flasher.SetFlash(None);
@@ -120,7 +118,6 @@ void DoorOpened()
 
 void DoorClosed() 
 {
-	// TODO - if nighttime should set appropriate LED
 	DEBUG_PRINTLN("DoorClosed event");
 	daylightSensor.Reset(false);
 	flasher.SetFlash(None);

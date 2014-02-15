@@ -1,8 +1,10 @@
-#define DEBUG
+//#define DEBUG
 #include "DebugUtils.h"
 
 #include "Arduino.h"
 #include "Flasher.h"
+
+#pragma region Constants
 
 const long FLASHER_PULSE_LENGTH = 1000;
 const long FLASHER_PULSE_DELAY = 0;
@@ -11,12 +13,25 @@ const long FLASHER_BLINK_DELAY = 500;
 const long FLASHER_BLINKFAST_LENGTH = 200;
 const long FLASHER_BLINKFAST_DELAY = 200;
 
+#pragma endregion
+
+#pragma region Private Event Handlers
+
 void (*_onPulseCompleteFunc)();
+
+#pragma endregion
+
+#pragma region Constructor
 
 Flasher::Flasher() 
 {
 }
 
+#pragma endregion
+
+#pragma region Public Methods
+
+/// <summary>Flasher::Init - Initialize Flasher object.</summary>
 void Flasher::Init(int ledPin)
 {
 	_ledPin = ledPin;
@@ -24,6 +39,7 @@ void Flasher::Init(int ledPin)
 	_lastValue = -1;
 }
 
+/// <summary>Flasher::SetFlash - Set current flasher to specified one.</summary>
 void Flasher::SetFlash(enum FlashType type)
 {
 	if (type == Revert)
@@ -40,6 +56,7 @@ void Flasher::SetFlash(enum FlashType type)
 	_flashStopTime = 0;
 }
 
+/// <summary>Flasher::SetFlashSequence - Set a sequence of flasher types, setting type for number of milliseconds then switching to secondary type.</summary>
 void Flasher::SetFlashSequence(enum FlashType type, int time, enum FlashType afterType)
 {
 	_saveType = _type;
@@ -52,6 +69,7 @@ void Flasher::SetFlashSequence(enum FlashType type, int time, enum FlashType aft
 	_flashStopTime = millis() + time;
 }
 
+/// <summary>Flasher::Update - Event processor for Flasher.</summary>
 boolean Flasher::Update() 
 {
 	if (_type == None && _lastValue == 0)
@@ -109,6 +127,16 @@ boolean Flasher::Update()
 	return true;
 }
 
+/// <summary>Flasher::IsType - Return whether current flasher is specified type.</summary>
+boolean Flasher::IsType(enum FlashType type)
+{
+	return _type == type;
+}
+
+#pragma endregion
+
+#pragma region Private Methods
+
 void Flasher::_writeToPin(int value)
 {
 	bool pulseJustCompleted = value == 0 && _lastValue != 0 && _type == Pulse;
@@ -121,13 +149,14 @@ void Flasher::_writeToPin(int value)
 		_onPulseCompleteFunc();
 }
 
-boolean Flasher::IsType(enum FlashType type)
-{
-	return _type == type;
-}
+#pragma endregion
 
+#pragma region Events
+
+/// <summary>Flasher::OnPulseComplete - Set event handler for when each pulse completes.</summary>
 void Flasher::OnPulseComplete(void (*onPulseComplete)())
 {
   _onPulseCompleteFunc = onPulseComplete;
 }
 
+#pragma endregion

@@ -4,16 +4,31 @@
 #include "Arduino.h"
 #include "Button.h"
 
+#pragma region Constants
+
 const long BUTTON_DEBOUNCE_TIME = 100;
 const long BUTTON_HOLD_MILLIS = 3000;
 
+#pragma endregion
+
+#pragma region Private Event Handlers
+
 void (*_onPressFunc)();
 void (*_onHoldFunc)();
+
+#pragma endregion
+
+#pragma region Constructor
 
 Button::Button() 
 {
 }
 
+#pragma endregion
+
+#pragma region Public Methods
+
+/// <summary>Button::Init - Initialize Button object.</summary>
 void Button::Init(int buttonPin)
 {
   _buttonPin = buttonPin;
@@ -21,6 +36,7 @@ void Button::Init(int buttonPin)
   pinMode(_buttonPin, INPUT);
 }
 
+/// <summary>Button::Update - Event processor for Button.</summary>
 boolean Button::Update()
 {
 	boolean hasUpdate = true;
@@ -66,15 +82,21 @@ boolean Button::Update()
   return hasUpdate;
 }
 
+#pragma endregion
 
+#pragma region Events
+
+/// <summary>Button::OnPress - Set event handler for button press event.</summary>
 void Button::OnPress(void (*onPress)())
 {
   _onPressFunc = onPress;
 }
 
+/// <summary>Button::OnHold - Set event handler for button hold event.</summary>
 void Button::OnHold(void (*onHold)())
 {
   _onHoldFunc = onHold;
 }
 
+#pragma endregion
 
