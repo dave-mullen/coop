@@ -131,7 +131,7 @@ void Door::Toggle()
 	if (_doorState == Opening || _doorState == Closing)
 		Stop();
 	else
-		_openClose(_doorState == _doorState == Opened ? false : true);
+		_openClose(_doorState == Opened ? false : true);
 }
 
 /// <summary>Door::Stop - Stop opening or closing door.</summary>
