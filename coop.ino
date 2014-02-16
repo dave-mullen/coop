@@ -29,7 +29,7 @@ const int PIN_FLASHER = 11; // Alert LED (PWM)
 // Configuration constants
 const long CONFIG_DAYLIGHT_CHANGE_DELAY = 300000; // 5 min Delay (ms) to recognize that it is actually a day/night change and not just temporary
 const byte CONFIG_DOOR_SPEED = 255; // Speed at which the door motor should run
-const int CONFIG_DOOR_MAX_OPEN_TIME = 30000; // Milliseconds the door should be allowed to take to open
+const int CONFIG_DOOR_MAX_OPEN_TIME = 32000; // Milliseconds the door should be allowed to take to open
 const int CONFIG_DOOR_MAX_CLOSE_TIME = 24000; // Milliseconds the door should be allowed to take to close
 const long SLEEP_MODE_TIME = 120000; // Milliseconds of inactivity before starting sleep mode
 
