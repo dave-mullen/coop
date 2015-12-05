@@ -4,7 +4,7 @@
 #include <avr/wdt.h>
 
 #include "Flasher.h"
-//#define DEBUG
+#define DEBUG
 #include "DebugUtils.h"
 
 #include "Arduino.h"
