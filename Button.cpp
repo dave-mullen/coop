@@ -6,8 +6,8 @@
 
 #pragma region Constants
 
-const long BUTTON_DEBOUNCE_TIME = 100;
-const long BUTTON_HOLD_MILLIS = 3000;
+const int BUTTON_DEBOUNCE_TIME = 100;
+const int BUTTON_HOLD_MILLIS = 3000;
 
 #pragma endregion
 
@@ -34,24 +34,26 @@ void Button::Init(int buttonPin)
   _buttonPin = buttonPin;
 
   pinMode(_buttonPin, INPUT);
+  
+  DEBUG_PRINTLN("Button Init");
 }
 
 /// <summary>Button::Update - Event processor for Button.</summary>
 boolean Button::Update()
 {
 	boolean hasUpdate = true;
-	long currentMillis = millis();
+	unsigned long currentMillis = millis();
   
 	_pressedState = digitalRead(_buttonPin) == HIGH;
   
 	if (!_pressedState) 
 	{
 		// Button not pressed.  See if it was pressed last time around and for how long
-		if (_lastPressedState && currentMillis > (_pressedStart + BUTTON_DEBOUNCE_TIME))
+		if (_lastPressedState && ((currentMillis - _pressedStart) > BUTTON_DEBOUNCE_TIME))
 		{
 			DEBUG_PRINTLN("Let go of button.  Hold time was " + String(currentMillis - _pressedStart) + "ms");
 			// User has just let go of button.  Decide if it was a press or hold and throw appropriate event
-			if (_onHoldFunc && (currentMillis > (_pressedStart + BUTTON_HOLD_MILLIS)))
+			if (_onHoldFunc && ((currentMillis - _pressedStart) > BUTTON_HOLD_MILLIS))
 				_onHoldFunc();
 			else if (_onPressFunc)
 				_onPressFunc();

@@ -16,9 +16,8 @@ class Button
   private:
     boolean _pressedState;
     boolean _lastPressedState;
-    long _pressedStart;
+    unsigned long _pressedStart;
     int _buttonPin;
-    int _holdTime;
 };
 
 #endif
