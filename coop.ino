@@ -4,7 +4,7 @@
 #include <avr/wdt.h>
 
 #include "Flasher.h"
-#define DEBUG
+//#define DEBUG
 #include "DebugUtils.h"
 
 #include "Arduino.h"
@@ -67,11 +67,12 @@ void setup() {
 // the loop routine runs over and over again forever:
 void loop() 
 {
-	static long lastUpdateMillis = millis();
-	long currentMillis = millis();
+	static unsigned long lastUpdateMillis = millis();
+	unsigned long currentMillis = millis();
 
 	// Run all event processors.  They will return true if something is happening
 	boolean hadUpdate = false;
+  
 	hadUpdate |= door.Update();
 	hadUpdate |= toggleButton.Update();
 	hadUpdate |= daylightSensor.Update();
@@ -79,17 +80,24 @@ void loop()
 
 	// Stamp time of last activity or handle overflow
 	if (hadUpdate || currentMillis < lastUpdateMillis)
+  {
 		lastUpdateMillis = currentMillis;
+  }
 
 	// If no activity see if it has been idle for SLEEP_MODE_TIME ms
 	if (!hadUpdate && (currentMillis - lastUpdateMillis) > SLEEP_MODE_TIME)
 	{
 		if (daylightSensor.IsDaytime())
 		{
+      #ifdef DEBUG
+        delay(100); // Clear serial buffer
+      #endif
+
 			// If daytime we will sleep for a very short time to save battery but still be ready to process events
-			LowPower.powerDown(SLEEP_120MS, ADC_OFF, BOD_OFF); 
+			LowPower.powerDown(SLEEP_500MS, ADC_OFF, BOD_OFF); 
 			DEBUG_PRINT("z");
-			delay(3); 
+      // Reset daylight sensor timing after sleeping since millis doesn't change
+      daylightSensor.GetCurrentLevel(true);
 		}
 		else
 		{
@@ -174,10 +182,11 @@ void DaylightSensorChange(boolean isDaylight)
 		door.Close();
 }
 
-void DaylightSensorSetLevel() 
+void DaylightSensorSetLevel(boolean isDaytime) 
 {
 	DEBUG_PRINTLN("DaylightSensorSetLevel event");
-	flasher.SetFlashSequence(BlinkFast, 2000, Revert);
+  int flashTime = (isDaytime) ? 2000 : 1200;
+	flasher.SetFlashSequence(BlinkFast, flashTime, Revert);
 }
 
 /// FlasherPulseComplete - Thrown when the flasher completes a pulse.  Tells us it's ok to sleep for 8 seconds
@@ -188,5 +197,7 @@ void FlasherPulseComplete()
 #endif
 
 	LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF); 
-	DEBUG_PRINT("ZZZ");
+	DEBUG_PRINT("Z");
+  // Reset daylight sensor timing after sleeping since millis doesn't change
+  daylightSensor.GetCurrentLevel(true);
 }
