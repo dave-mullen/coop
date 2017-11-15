@@ -8,6 +8,7 @@ class DaylightSensor
   public:
     DaylightSensor();
     void Init(int prPin, boolean isDaytime, long delayTime);
+    byte GetCurrentLevel(boolean forceSample);
     boolean Update();
     void Reset(boolean isDaytime);
     boolean IsDaytime();
@@ -18,14 +19,14 @@ class DaylightSensor
     void OnChanging(void (*onChanging)());
     void OnCancelled(void (*onCancelled)());
     void OnChange(void (*onChange)(boolean isDaytime));
-	void OnSetLevel(void (*onSetLevel)());
+	  void OnSetLevel(void (*onSetLevel)(boolean isDaytime));
   private:
-    byte _currentLevel();
+    byte _currentLevel(boolean forceSample);
     
     byte _lastLevel;
     int _prPin;
     boolean _isDaytime;
-    long _changeStart;
+    unsigned long _changeStart;
     byte _dayLevel;
     byte _nightLevel;
     long _delayTime;

@@ -9,7 +9,7 @@
 
 const byte DEFAULT_NIGHT_LEVEL = 15;
 const byte DEFAULT_DAY_LEVEL = 80;
-const int SAMPLE_TIME = 500;
+const int SAMPLE_TIME = 5000;
 
 #pragma endregion
 
@@ -18,7 +18,7 @@ const int SAMPLE_TIME = 500;
 void (*_onChangingFunc)();
 void (*_onCancelledFunc)();
 void (*_onChangeFunc)(boolean isDaytime);
-void (*_onSetLevelFunc)();
+void (*_onSetLevelFunc)(boolean isDaytime);
 
 #pragma endregion
 
@@ -40,7 +40,7 @@ void DaylightSensor::Init(int prPin, boolean isDaytime, long delayTime)
   _dayLevel = DEFAULT_DAY_LEVEL;
   _nightLevel = DEFAULT_NIGHT_LEVEL;
   _delayTime = delayTime;
-  
+
   byte savedDayLevel = EEPROM.read(0);
   byte savedNightLevel = EEPROM.read(1);
   
@@ -74,44 +74,51 @@ boolean DaylightSensor::IsDaytime()
 void DaylightSensor::SetDayLevel()
 {
   // Save current reading to EEPROM
-  _dayLevel = _currentLevel();
+  _dayLevel = _currentLevel(false);
   EEPROM.write(0, _dayLevel);
   DEBUG_PRINTLN("Saved new day level: " + String(_dayLevel));
   if (_onSetLevelFunc)
-	  _onSetLevelFunc();
+	  _onSetLevelFunc(true);
 }
 
 /// <summary>DaylightSensor::SetNightLevel - Save current light level to memory as night level.</summary>
 void DaylightSensor::SetNightLevel()
 {
   // Save current reading to EEPROM
-  _nightLevel = _currentLevel();
+  _nightLevel = _currentLevel(false);
   EEPROM.write(1, _nightLevel);
   DEBUG_PRINTLN("Saved new night level: " + String(_nightLevel));
   if (_onSetLevelFunc)
-	  _onSetLevelFunc();
+	  _onSetLevelFunc(false);
+}
+
+/// <summary>DaylightSensor::GetCurrentLevel - Get current level</summary>
+byte DaylightSensor::GetCurrentLevel(boolean forceSample)
+{
+  return _currentLevel(forceSample);
 }
 
 /// <summary>DaylightSensor::Update - Event processor for DaylightSensor.</summary>
 boolean DaylightSensor::Update()
 {
 	boolean hasUpdate = true;
-	byte currentLevel = _currentLevel();
+	byte currentLevel = _currentLevel(false);
 
+ 
 	if ((_isDaytime && (currentLevel <= _nightLevel)) || (!_isDaytime && (currentLevel >= _dayLevel))) 
 	{
 		if (_changeStart == 0) // && ((_isDaytime && (_lastLevel > _nightLevel)) || (!_isDaytime && (_lastLevel < _dayLevel))))
 		{
-			DEBUG_PRINTLN("Daylight state seems to be different");
+			DEBUG_PRINTLN("Daylight state seems to be different (day level=" + String(_dayLevel) + ", night level=" + String(_nightLevel) + ", current=" + String(currentLevel) + ")");
 			// Changing since last check
 			if (_onChangingFunc)
 			_onChangingFunc();
     
 			_changeStart = millis();
 		}
-		else if (millis() > (_changeStart + _delayTime))
+		else if ((millis() - _changeStart) > _delayTime)
 		{
-			DEBUG_PRINTLN("Daylight change detected");
+      DEBUG_PRINTLN("Daylight change detected (day level=" + String(_dayLevel) + ", night level=" + String(_nightLevel) + ", current=" + String(currentLevel) + ")");
 			// Change accepted
 			_isDaytime = !_isDaytime;
 			if (_onChangeFunc)
@@ -122,7 +129,7 @@ boolean DaylightSensor::Update()
 	}
 	else if (_changeStart != 0 && ((_isDaytime && _lastLevel <= _nightLevel) || (!_isDaytime && _lastLevel >= _dayLevel)))
 	{
-		DEBUG_PRINTLN("Daylight change never mind...");
+      DEBUG_PRINTLN("Daylight change never mind... (day level=" + String(_dayLevel) + ", night level=" + String(_nightLevel) + ", current=" + String(currentLevel) + ")");
 		// Change reverted
 		if (_onCancelledFunc)
 			_onCancelledFunc();
@@ -133,6 +140,8 @@ boolean DaylightSensor::Update()
   
   _lastLevel = currentLevel;
 
+ //DEBUG_PRINTLN("DaylightSensor::Update: isDaytime=" + String(_isDaytime) + ", _dayLevel=" + String(_dayLevel) + ", _nightLevel=" + String(_nightLevel) + ", currentLevel=" + String(currentLevel) + ")" + ", hasUpdate=" + String(hasUpdate));
+
   return hasUpdate;
 }
 
@@ -140,9 +149,20 @@ boolean DaylightSensor::Update()
 
 #pragma region Private Methods
 
-byte DaylightSensor::_currentLevel() 
+byte DaylightSensor::_currentLevel(boolean forceSample) 
 {
-  return (byte)map(analogRead(_prPin), 0, 1023, 0, 254);
+  static unsigned long lastSampleMillis = millis();
+  static byte lastRead;
+  int rawRead;
+  
+  if (forceSample || (millis() - lastSampleMillis) > SAMPLE_TIME)
+  {
+    lastSampleMillis = millis();
+    rawRead = analogRead(_prPin);
+    lastRead = (byte)map(rawRead, 0, 1023, 0, 254);
+    DEBUG_PRINTLN("New daylight rawRead=" + String(rawRead) + ", sample=" + String(lastRead));
+  }
+  return lastRead;
 }
 
 #pragma endregion
@@ -168,7 +188,7 @@ void DaylightSensor::OnChange(void (*onChange)(boolean isDaytime))
 }
 
 /// <summary>DaylightSensor::OnSetLevel - Set event for when day/night light level is saved to memory.</summary>
-void DaylightSensor::OnSetLevel(void (*onSetLevel)())
+void DaylightSensor::OnSetLevel(void (*onSetLevel)(boolean isDaytime))
 {
   _onSetLevelFunc = onSetLevel;
 }
