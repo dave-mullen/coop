@@ -17,8 +17,8 @@ class Flasher
  private:
 	 int _ledPin;
 	 FlashType _type;
-	 long _flashStartTime;
-	 long _flashStopTime;
+	 unsigned long _flashStartTime;
+	 unsigned long _flashStopTime;
 	 FlashType _afterType;
 	 void _writeToPin(int value); 
 	 FlashType _saveType;

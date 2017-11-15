@@ -37,15 +37,21 @@ void Flasher::Init(int ledPin)
 	_ledPin = ledPin;
 	_type = None;
 	_lastValue = -1;
+
+  DEBUG_PRINTLN("Flasher Init");
 }
 
 /// <summary>Flasher::SetFlash - Set current flasher to specified one.</summary>
 void Flasher::SetFlash(enum FlashType type)
 {
+  DEBUG_PRINTLN("SetFlash: type=" + String(type));
+
 	if (type == Revert)
 	{
-		if (_saveType != Revert)
+		if (_saveType != Revert && _saveType != Solid)
 			_type = _saveType;
+    else
+      _type = _saveType = None;
 	}
 	else 
 	{
@@ -59,6 +65,8 @@ void Flasher::SetFlash(enum FlashType type)
 /// <summary>Flasher::SetFlashSequence - Set a sequence of flasher types, setting type for number of milliseconds then switching to secondary type.</summary>
 void Flasher::SetFlashSequence(enum FlashType type, int time, enum FlashType afterType)
 {
+  DEBUG_PRINTLN("SetFlashSequence: type=" + String(type) + ", time=" + String(time) + ", afterType=" + String(afterType));
+
 	_saveType = _type;
 	_flashStartTime = millis();
 	if (afterType == Revert)
@@ -66,7 +74,7 @@ void Flasher::SetFlashSequence(enum FlashType type, int time, enum FlashType aft
 	else
 		_afterType = afterType;
 	_type = type;
-	_flashStopTime = millis() + time;
+	_flashStopTime = _flashStartTime + time;
 }
 
 /// <summary>Flasher::Update - Event processor for Flasher.</summary>
@@ -75,7 +83,7 @@ boolean Flasher::Update()
 	if (_type == None && _lastValue == 0)
 		return false;
 
-	long currentMillis = millis();
+	unsigned long currentMillis = millis();
 	//_timeAdjust = 0;
 
 	// Handle overflow
