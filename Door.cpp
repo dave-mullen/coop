@@ -58,6 +58,8 @@ void Door::Init(int doorOpenedSwitchPin, int doorClosedSwitchPin, int motorStbyP
     _doorState = Opened;
   else if (digitalRead(_doorClosedSwitchPin) == DOOR_CLOSED_STATE)
     _doorState = Closed;
+
+  DEBUG_PRINTLN("Door Init: _doorState=" + String(_doorState));
 }
 
 /// <summary>Door::Update - Event processor for Door.</summary>
@@ -90,7 +92,7 @@ boolean Door::Update()
     }
     else 
     {
-      if (millis() > (_doorRunStart + (_doorState == Opening ? _maxOpenTime : _maxCloseTime))) 
+      if ((millis() - _doorRunStart) > (_doorState == Opening ? _maxOpenTime : _maxCloseTime)) 
       {
         DEBUG_PRINTLN("Door timed out while " + String(_doorState) + ".  Stopping...");
 

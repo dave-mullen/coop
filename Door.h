@@ -33,7 +33,7 @@ class Door
 
     DoorStateType _doorState;
     DoorStateType _lastDoorState;
-    long _doorRunStart;
+    unsigned long _doorRunStart;
     int _doorOpenedSwitchPin;
     int _doorClosedSwitchPin;
     int _motorStbyPin;
@@ -42,7 +42,7 @@ class Door
     int _motorIn2Pin;
     byte _doorSpeed;
     int _maxOpenTime;
-	int _maxCloseTime;
+	  int _maxCloseTime;
     
     void _openClose(boolean openIt);
 };
